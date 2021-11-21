@@ -11,6 +11,7 @@ public class StrictBankAccount implements BankAccount {
     private final int usrID;
     private double balance;
     private int totalTransactionCount;
+    private int totalTransactionOnATMCount;
     private final int maximumAllowedATMTransactions;
     private static final double ATM_TRANSACTION_FEE = 1;
     private static final double MANAGEMENT_FEE = 5;
@@ -40,6 +41,9 @@ public class StrictBankAccount implements BankAccount {
             this.balance += amount;
             increaseTransactionsCount();
         }
+        else {
+            throw new WrongAccountHolderException();
+        }
     }
 
     /**
@@ -47,9 +51,17 @@ public class StrictBankAccount implements BankAccount {
      * {@inheritDoc}
      */
     public void withdraw(final int usrID, final double amount) {
-        if (checkUser(usrID) && isWithdrawAllowed(amount)) {
-            this.balance -= amount;
-            increaseTransactionsCount();
+        if (checkUser(usrID)) {
+            if (isWithdrawAllowed(amount)) {
+                this.balance -= amount;
+                increaseTransactionsCount();
+            }
+            else {
+                throw new NotEnoughFoundsException();
+            }
+        }
+        else {
+            throw new WrongAccountHolderException();
         }
     }
 
@@ -58,10 +70,15 @@ public class StrictBankAccount implements BankAccount {
      * {@inheritDoc}
      */
     public void depositFromATM(final int usrID, final double amount) {
-        if (totalTransactionCount < maximumAllowedATMTransactions) {
+        if (totalTransactionOnATMCount < maximumAllowedATMTransactions) {
             this.deposit(usrID, amount - StrictBankAccount.ATM_TRANSACTION_FEE);
             increaseTransactionsCount();
+            increaseTransactionsOnATMCount();
         }
+        else {
+            throw new TransactionsOverQuotaException();
+        }
+        
     }
 
     /**
@@ -69,8 +86,12 @@ public class StrictBankAccount implements BankAccount {
      * {@inheritDoc}
      */
     public void withdrawFromATM(final int usrID, final double amount) {
-        if (totalTransactionCount < maximumAllowedATMTransactions) {
+        if (totalTransactionOnATMCount < maximumAllowedATMTransactions) {
             this.withdraw(usrID, amount + StrictBankAccount.ATM_TRANSACTION_FEE);
+            increaseTransactionsOnATMCount();
+        }
+        else {
+            throw new TransactionsOverQuotaException();
         }
     }
 
@@ -88,6 +109,10 @@ public class StrictBankAccount implements BankAccount {
      */
     public int getTransactionCount() {
         return totalTransactionCount;
+    }
+    
+    public int getTransactionOnATMCount() {
+        return totalTransactionOnATMCount;
     }
 
     /**
@@ -113,5 +138,13 @@ public class StrictBankAccount implements BankAccount {
 
     private void increaseTransactionsCount() {
         totalTransactionCount++;
+    }
+    
+    private boolean isAtmTransactionAllowed() {
+        return totalTransactionOnATMCount < maximumAllowedATMTransactions;
+    }
+    
+    private void increaseTransactionsOnATMCount() {
+        totalTransactionOnATMCount++;
     }
 }
